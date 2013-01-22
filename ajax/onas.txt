@@ -1,0 +1,8 @@
+    <H2>O firmie</H2>
+      <p>
+        Nasza firma jest profesjonalnym dostawcą nowoczesnych i energooszczędnych artykułów oświetleniowych oraz gustownych akcesoriów łazienkowych.
+        Oferujemy produkty w pełni dostosowane do potrzeb naszych klientów i wykonane według technologii gwarantujących najwyższy poziom bezpieczeństwa i jakości. Pracujemy nad tym, żeby dostarczać odbiorcom kompleksową ofertę w zakresie oświetlenia przy zachowaniu wysokiego standardu obsługi klientów.
+        Bazując na solidnym fundamencie ponad dziesięcioletniego doświadczenia i wiedzy ciągle pracujemy nad nowatorskimi rozwiązaniami, podążamy za nowymi trendami, dbamy o środowisko naturalne.
+        W trosce o ochronę środowiska naturalnego oraz działając zgodnie z obowiązującymi przepisami prawa nasza firma została zarejestrowana w Generalnym Inspektoracie Ochrony Środowiska jako podmiot wprowadzający na rynek sprzęt elektryczny oraz zbierający zużyty sprzęt elektryczny pod nr 606530418.
+        Potrzeby naszych klientów stanowią dla nas inspirację i podstawę działania. Jesteśmy przekonani, że spełnimy Państwa oczekiwania a nasza profesjonalna obsługa zachęci do wieloletniej współpracy.
+       </p> 

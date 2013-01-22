@@ -1,0 +1,505 @@
+<HTML>
+<HEAD>
+<TITLE>Sklep z żarówkami</TITLE>
+<meta charset="utf-8"/>
+<SCRIPT>
+<!--
+
+// Define a function set the variable 
+// associated with this window to null
+function resetOpener() {
+	opener.shopWin = null;
+	}
+
+//-->
+</SCRIPT>
+<SCRIPT SRC="inventory.js"></SCRIPT>
+<SCRIPT>
+function wiadomosc(rodzaj, text)
+{//rodzaj: alert, error, warning, info, success
+	$("#alert").html("<div class='alert alert-"+rodzaj+"'><button type='button' class='close' data-dismiss='alert'>&times;</button><strong>Uwaga!</strong> "+text+"</div>");
+	return;
+}
+
+// Define control variables
+var gimmeControl = false;
+var browseControl = false;
+var curCLoc = -1;
+var curPLoc = -1;
+var infoStr = '';
+var shoppingBag;
+
+// Define a shopping bag constructor 
+// then create a new Bag
+function Bag() {
+	this.taxRate 	= .23;
+	this.taxTotal 	= 0;
+	this.shipRate 	= .02;
+	this.shipTotal	= 0;
+	this.subTotal 	= 0;
+	this.bagTotal 	= 0;
+	this.things 	= new Array();
+	}
+
+shoppingBag = new Bag();
+
+// This function displays links to 
+// all the available categories
+function showStore() {
+	gimmeControl = false;
+	var intro = '<H2>Kategorie produktów</H2>';
+	var storeStr = '<BLOCKQUOTE><DL>';
+	for (var i = 0; i < categorySet.length; i++) {
+		storeStr += '<DT><A HREF="#' + i + '" class="produkt">' + 
+			categorySet[i].name + '</A>' + 
+			'<DD>' + categorySet[i].description + '<BR><BR>';
+		}
+	document.title = 'Kategorie produktów';
+	$("#content").html(intro+storeStr);
+	}
+
+// Define a function to manage 
+// opening the product search
+function portal() {
+	gimmeControl = false;
+	parent.frames[1].location.href = "search/index.html";
+	}
+
+// Display a product depending on the current values of the 
+// category number (curCLoc) and product number (curPLoc)
+function display(cOffset, pOffset) {
+	if(!browseControl) {
+		wiadomosc("info", " Zacznij zakupy od wybrania kategorii produktów lub skorzystaj z wyszukiwarki produktów.");
+		return;
+		}
+	gimmeControl = true;
+	if (curPLoc + pOffset < 0 || curPLoc + pOffset == categorySet[curCLoc].prodLine.length) {
+		if (curPLoc + pOffset < 0) { 		
+			if (curCLoc - 1 < 0) { curCLoc = categorySet.length - 1; }
+			else { curCLoc--; }
+			curPLoc = categorySet[curCLoc].prodLine.length - 1;		
+			}
+		else if (curPLoc + pOffset == categorySet[curCLoc].prodLine.length) {
+			if (curCLoc + 1 == categorySet.length) { curCLoc = 0; }
+			else { curCLoc++; }
+			curPLoc = 0;
+			}
+		}
+	else {
+		if (curCLoc + cOffset < 0 || curCLoc + cOffset == categorySet.length) {
+			curCLoc = (curCLoc + cOffset < 0 ? categorySet.length - 1 : 0);
+			}
+		else { curCLoc += cOffset; }
+
+		if (cOffset == -1 || cOffset == 1) { curPLoc = 0; }
+		else if (pOffset == 0) {
+			curPLoc = (curPLoc >= categorySet[curCLoc].prodLine.length ? 0 : curPLoc)
+			}
+		else { curPLoc = curPLoc + pOffset; }
+		}
+	infoStr = '<BODY><TABLE CELLPADDING=3><TR><TD VALIGN=TOP COLSPAN=2>' + 
+		'<FONT FACE=Tahoma><H2>Kategoria: <I>' + categorySet[curCLoc].name + '</I></H2>' +
+		'<TR>' + 
+		'<TD VALIGN=TOP><IMG SRC="' + categorySet[curCLoc].prodLine[curPLoc].icon.src +  
+		'"></TD><TD VALIGN=TOP><FONT FACE=Tahoma>' + 
+		'<B>Technologia: </B>' +  categorySet[curCLoc].prodLine[curPLoc].name + '<BR>' +
+		'<B>Opis: </B>' +  categorySet[curCLoc].prodLine[curPLoc].description + '<BR>' +
+		'<B>Cena: </B>' + numberFormat(categorySet[curCLoc].prodLine[curPLoc].price) + ' zł' +'<BR>' + 
+		'<B>PLU: </B>' + categorySet[curCLoc].prodLine[curPLoc].plu + '<BR>' + 
+	  '</TD></TR></TABLE>';
+
+	$("#content").html(infoStr);
+	}
+
+// Used for navigation by setting values 
+// curCLoc and curPLoc independently instead 
+// of setting them according to their current 
+// value as done in display()
+function reCall(cReset, pReset) {
+	browseControl = true; 
+	curCLoc = cReset;
+	curPLoc = pReset;
+	display(0, 0);
+	} 
+
+// This function adds a product to a user's 
+// bag only if it is not there already
+function gimmeOne() {
+	if (!gimmeControl) {
+		wiadomosc("alert", "Nie wybrano produktu");
+		return;
+		}
+
+	for (var i = 0; i < shoppingBag.things.length; i++) { 
+		if (categorySet[curCLoc].prodLine[curPLoc].plu == shoppingBag.things[i].plu) {
+			wiadomosc("warning", " Posiadasz już ten produkt. Możesz zmienić liczbę produktów w Twoim koszyku.");
+			return;
+			} 
+		}
+	shoppingBag.things[shoppingBag.things.length] = categorySet[curCLoc].prodLine[curPLoc];
+	shoppingBag.things[shoppingBag.things.length - 1].itemQty = 1;
+	shoppingBag.things[shoppingBag.things.length - 1].category = categorySet[curCLoc].name;
+	wiadomosc("success", "Żarówka " + shoppingBag.things[shoppingBag.things.length - 1].name + " została dodana do Twojego koszyka.");
+	}
+
+// Define a function to iterate through all the 
+// products in the user's bag and display them 
+// in a form for user changes
+function showBag() {
+	if (shoppingBag.things.length == 0) {
+		wiadomosc("info", " Twój koszyk jest pusty.");
+		return;
+		}
+	gimmeControl = false;
+	var header = '<HTML><HEAD><TITLE>koszyk</TITLE>' +
+		'</HEAD><BODY BGCOLOR=FFFFFF onLoad="parent.frames[0].runningTab(document.forms[0]);">';
+	var intro = '<H2>Twój koszyk <img src = \'images/bag.png\' /></H2><FORM onReset="setTimeout(\'parent.frames[0].runningTab(document.forms[0])\', 25);">';
+	var tableTop = '<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=5>' + 
+		'<TR><TH><B>Index' + 
+		'<TH><B>Produkt<TH><B>Kategoria' + 
+		'<TH><B>PLU<TH><B>Cena' + 
+		'<TH><B>Ilość<TH><B>Razem' + 
+		'<TH><B>Usuń' + 
+		'</TR>';
+	var itemStr = '';
+	for (var i = 0; i < shoppingBag.things.length; i++) {
+		itemStr += '<TR>' + 
+			'<TD ALIGN=CENTER>' + (i + 1) + '</TD>' + 
+			'<TD>' + shoppingBag.things[i].name + '</TD>' + 
+			'<TD>' + shoppingBag.things[i].category + '</TD>' + 
+			'<TD>' + shoppingBag.things[i].plu + '</TD>' + 
+			'<TD ALIGN=RIGHT>$' + parent.frames[0].numberFormat(shoppingBag.things[i].price) + '</TD>' + 
+			'<TD ALIGN=CENTER>' + parent.frames[0].genSelect(shoppingBag.things[i].price, shoppingBag.things[i].itemQty, i) + '</TD>' + 
+			'<TD ALIGN=CENTER><INPUT TYPE=TEXT SIZE=10 VALUE="' + parent.frames[0].numberFormat(shoppingBag.things[i].price * shoppingBag.things[i].itemQty) + '" onFocus="this.blur();"></TD>' +
+			'<TD ALIGN=CENTER><INPUT TYPE=CHECKBOX></TD>' + 
+			'</TR>';
+		}
+	var tableBottom = '<TR>' + 
+		'<TD ALIGN=RIGHT COLSPAN=6>Netto:</TD>' + 
+		'<TD ALIGN=CENTER><INPUT TYPE=TEXT SIZE=10 NAME="subtotal" onFocus="this.blur();"></TD></TR>' +
+		'<TR>' + 
+		'<TD ALIGN=RIGHT COLSPAN=6> + 23% VAT:</TD>' + 
+		'<TD ALIGN=CENTER><INPUT TYPE=TEXT SIZE=10 NAME="tax" onFocus="this.blur();"></TD></TR>' + 
+		'<TR>' + 
+		'<TD ALIGN=RIGHT COLSPAN=6> + 2% dowóz:</TD>' + 
+		'<TD ALIGN=CENTER><INPUT TYPE=TEXT SIZE=10 NAME="ship" onFocus="this.blur();"></TD></TR>' + 
+		'<TR>' +
+		'<TD ALIGN=RIGHT COLSPAN=3><INPUT TYPE=BUTTON VALUE="Zamów" onClick="parent.frames[0].checkOut(this.form);"></TD>' +  
+		'<TD ALIGN=RIGHT><INPUT TYPE=RESET VALUE="Cofnij zmiany"></TD>' + 
+		'<TD ALIGN=RIGHT><INPUT TYPE=BUTTON VALUE="Zastosój zmiany" onClick="parent.frames[0].changeBag(this.form, true);"></TD>' + 
+		'<TD ALIGN=RIGHT>Brutto:</TD>' + 
+		'<TD ALIGN=CENTER><INPUT TYPE=TEXT NAME="total" SIZE=10 onFocus="this.blur();"></TD></TR>';
+
+	var footer = '</TABLE></FORM></BODY></HTML>';
+	infoStr = header + intro + tableTop + itemStr + tableBottom + footer;
+	parent.frames[1].location.replace('javascript: parent.frames[0].infoStr');
+	}
+
+// Generate dynamic SELECT lists according 
+// to a price aggregate, and set the OPTION
+// that matches the qty as SELECTED
+function genSelect(priceAgr, qty, idx) {
+	var selStr = '<SELECT onChange="this.form.elements[' + (idx * 3 + 1) + 
+			'].value = this.options[this.selectedIndex].value; parent.frames[1].runningTab(this.form);">';
+	for (var i = 1; i <= 10; i++) {
+		selStr += '<OPTION VALUE="' + numberFormat(i * priceAgr) + '"' + (i == qty ? ' SELECTED' : '') + '>' + i; 
+		}
+	selStr += '</SELECT>';
+	return selStr;
+	}
+
+// Define a function to compute shopping totals
+function runningTab(formObj) {
+	var subTotal = 0;
+	for (var i = 0; i < shoppingBag.things.length; i++) {
+		subTotal += parseFloat(formObj.elements[(i * 3) + 1].value); 
+		}
+	formObj.subtotal.value = numberFormat(subTotal);
+	formObj.tax.value = numberFormat(subTotal * shoppingBag.taxRate);
+	formObj.ship.value = numberFormat(subTotal * shoppingBag.shipRate); 
+	formObj.total.value = numberFormat(subTotal + 
+			round(subTotal * shoppingBag.taxRate) + round(subTotal * shoppingBag.shipRate));
+	shoppingBag.subTotal = formObj.subtotal.value;
+	shoppingBag.taxTotal = formObj.tax.value;
+	shoppingBag.shipTotal = formObj.ship.value;
+	shoppingBag.bagTotal = formObj.total.value;
+	}
+
+// Ensure that each number printed as a string 
+// is in 0.00 format
+function numberFormat(amount) {
+	var rawNumStr = round(amount) + '';
+	rawNumStr = (rawNumStr.charAt(0) == '.' ? '0' + rawNumStr : rawNumStr);
+	if (rawNumStr.charAt(rawNumStr.length - 3) == '.') {
+		return rawNumStr
+		}
+	else if (rawNumStr.charAt(rawNumStr.length - 2) == '.') {
+		return rawNumStr + '0';
+		}
+	else { return rawNumStr + '.00'; }
+	}
+
+// Round all passed numbers to two 
+// decimal places (hundredths place)
+function round(number,decPlace) {
+	decPlace = (!decPlace ? 2 : decPlace);
+	return Math.round(number * Math.pow(10,decPlace)) / Math.pow(10,decPlace);
+	}
+
+// Define a function to change product quantities
+// or remove product selections from the 
+// things array
+function changeBag(formObj, showAgain) {
+	var tempBagArray = new Array();
+	for (var i = 0; i < shoppingBag.things.length; i++) {
+		if (!formObj.elements[(i * 3) + 2].checked) {
+			tempBagArray[tempBagArray.length] = shoppingBag.things[i];
+			tempBagArray[tempBagArray.length - 1].itemQty = formObj.elements[i * 3].selectedIndex + 1;
+			}
+		}
+	shoppingBag.things = tempBagArray;
+	if(shoppingBag.things.length == 0) {
+		wiadomosc("alert", "Twój koszyk jest pusty.");
+		parent.frames[1].showStore();
+		}
+	else { showBag(); }
+	}
+
+// Generate the check out form so the 
+// user can enter payment information
+function checkOut(formObj) {
+	gimmeControl = false;
+	if(!confirm("Czy chcesz zakończyć zakupy i przejść do realizacji zamówienia?")) { 
+		return; 
+		}
+	if(shoppingBag.things.length == 0) { 
+		showStore(); 
+		return;
+		}
+	var header = '<HTML><TITLE>Twój koszyk</TITLE>' + 
+		'<BODY BGCOLOR=FFFFFF>';
+	var intro = '<H2>Formularz zamówieniowy</H2>' + 
+		'<FORM METHOD=POST ACTION="http://www.serve.com/hotsyte/cgi-bin/bag.cgi" onSubmit="return parent.frames[0].cheapCheck(this);">'; 
+	var shipInfo = '<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=5>' + 
+		'<TR>' + 
+		'<TD><B>Dane osobowe</TD></TR>'+
+		'<TR>' + 
+		'<TD>Imię</TD>' + '<TD><INPUT TYPE=TEXT NAME="fname"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Nazwisko</TD>' + '<TD><INPUT TYPE=TEXT NAME="lname"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Nazwa firmy</TD>' + '<TD><INPUT TYPE=TEXT NAME="cname"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Ulica(1)</TD>' + '<TD><INPUT TYPE=TEXT NAME="saddress1"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Ulica(2)</TD>' + '<TD><INPUT TYPE=TEXT NAME="saddress2"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Miasto</TD>' + '<TD><INPUT TYPE=TEXT NAME="city"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Województwo</TD>' + '<TD><INPUT TYPE=TEXT NAME="stpro"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Kraj</TD>' + '<TD><INPUT TYPE=TEXT NAME="country"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Adres email</TD>' + '<TD><INPUT TYPE=TEXT NAME="zip"></TD>' + '</TR>' +
+		'<TR><TD><BR><BR></TD></TR></TABLE>';
+
+	var payInfo = '<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=5>' + 
+		'<TR>' + 
+		'<TD><B>Sposób zapłaty</TD></TR>'+
+		'<TR>' + 
+		'<TD>Rodzaj karty kredytowej: &nbsp; &nbsp; &nbsp; </TD>' + 
+		'<TD>' + 
+		'Visa <INPUT TYPE=RADIO NAME="ctype" VALUE="visa" CHECKED> &nbsp; &nbsp; &nbsp; ' + 
+		'Amex <INPUT TYPE=RADIO NAME="ctype" VALUE="amex"> &nbsp; &nbsp; &nbsp; ' + 
+		'Discover <INPUT TYPE=RADIO NAME="ctype" VALUE="disc"> &nbsp; &nbsp; &nbsp; </TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD>Numer karty kredytowej</TD>' + '<TD><INPUT TYPE=TEXT NAME="cnumb"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD><label for="exp_date">Data ważności</label></TD>' + '<TD><input type="data" name="exp_date" id="exp_date"></TD>' + '</TR>' +
+		'<TR>' + 
+		'<TD><INPUT TYPE=SUBMIT VALUE="Wyślij"></TD>' + '<TD><INPUT TYPE=RESET VALUE="Wyczyść"></TD>' + '</TR>' +
+		'</TABLE>';
+
+	// Generate a hidden field for each product selected
+	// that includes the PLU and quantity. Then add
+	// hidden fields to include the subtotal, tax totals, 
+	// and grand total
+	var itemInfo = '';
+
+	for (var i = 0; i < shoppingBag.things.length; i++) {
+		itemInfo += '<INPUT TYPE=HIDDEN NAME="prod' + i + 
+			'" VALUE="' + shoppingBag.things[i].plu + '-' + shoppingBag.things[i].itemQty + '">';
+		}
+
+	var totalInfo = '<INPUT TYPE=HIDDEN NAME="subtotal" VALUE="' + shoppingBag.subTotal + '">' + 
+		'<INPUT TYPE=HIDDEN NAME="taxtotal" VALUE="' + shoppingBag.taxTotal + '">' + 
+		'<INPUT TYPE=HIDDEN NAME="shiptotal" VALUE="' + shoppingBag.shipTotal + '">' + 
+		'<INPUT TYPE=HIDDEN NAME="bagtotal" VALUE="' + shoppingBag.bagTotal + '">';
+
+	var footer = '</FORM></BODY></HTML>';
+
+	infoStr = header + intro + shipInfo + payInfo + itemInfo + totalInfo + footer;
+	parent.frames[1].location.replace('javascript: parent.frames[0].infoStr');		
+	}
+
+// Define a function to check each form element 
+// If the element is of type "text", check if its
+// value is a empty string. Stop the form 
+// submission if so.
+function cheapCheck(formObj) {
+	for (var i = 0; i < formObj.length; i++) {
+		if (formObj[i].type == "text" && formObj.elements[i].value == "") {
+			wiadomosc("error", "Musisz uzupełnić wszystkie pola.");
+			return false;
+			}
+		}
+
+	if(!confirm("Jeśli wszystkie informacje są prawidłowe wciśnij OK albo Anuluj w celu dokonania zmian.")) { 
+		return false; 
+		}
+	wiadomosc("success", "Dziękujemy! W ciągu 3 dni otrzymasz zamówiony towar.");
+	shoppingBag = new Bag();
+	showStore();
+	return true;	
+	}
+//-->
+</SCRIPT>
+<link href="css/bootstrap.css" rel="stylesheet" />
+<link href="css/bootstrap-responsive.css" rel="stylesheet" />  
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<script src="js/bootstrap.min.js"></script>
+
+<script>
+	$(document).ready(function(){
+		$("#content").load("ajax/onas.txt");//ladowanie strony glownej
+		
+		
+		//$("#content").click(function(){
+			//alert(location.hash.substr(1, 7));
+			//if (location.hash.substr(1, 7)=="produkt") alert(location.hash);
+		//});
+		
+		//wysiwetl strone glowna
+		$("#o_nas").click(function(){
+			$("#content").load("ajax/onas.txt");
+		});
+		
+		//tak wyobrazam sobie dojscie do produktów
+		$(".produkt").click(function(){
+			//alert($(this).attr('href').substr(1));
+			var produkt_id=$(this).attr('href').substr(1, 1);
+			alert (produkt_id);
+			reCall(0, 0);
+		});
+	});
+</script>
+</HEAD>
+<body onLoad="makeProducts();">
+	<div class="container-fluid">
+    <div class="row-fluid">
+      <div class="span9">
+        <img src="images/logo.png" alt="Logo" style="margin: 5px 0;" title="żarówki, żaróweczki, sklep z żarówkami">
+      </div>
+      <div class="span3 pull-right">
+      </div>
+    </div>
+    <div class="navbar">
+      <div class="navbar-inner">
+        <div class="container">
+          <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <!-- Be sure to leave the brand out there if you want it shown -->
+          <ul class="nav">
+            <li>
+              <A href="#" id="o_nas">O nas<A>
+							<A href="#0" class="produkt">href="#0" i class="produkt"<A>
+            </li>
+            <li>
+              <A HREF="javascript: gimmeOne();">Do koszyka<A>
+            </li>
+            <li>
+              <A HREF="javascript: showBag();">Koszyk<A>
+            </li>
+            <li>
+              <A HREF="javascript: showStore();">Kategorie produktów<A>
+            </li>
+          </ul>
+          <form class="navbar-search pull-right">
+            <input type="text" 
+                   data-provide="typeahead" 
+                   class="search-query" 
+                   placeholder="przeszukaj sklep" 
+                   data-items="4" 
+                   data-source='get_products()'
+                   onblur = "sprawdzPole(this)">
+          </form>
+	  
+          <!-- Everything you want hidden at 940px or less, place within here -->  
+          <div class="nav-collapse">
+            <!-- .nav, .navbar-search, .navbar-form, etc -->
+            <div class = "span12">
+							<ul class="pager">
+								<li><a href="javascript: display(-1,0);">Poprzednia kategoria</a></li>
+								<li><a href="javascript: display(0,1);">Poprzedni produkt</a></li>
+								<li><a href="javascript: display(0,1);">Następny produkt</a></li>
+								<li><a href="javascript: display(1,0);">Następna kategoria</a></li>
+							</ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class = "row-fluid">
+    </div>
+  </div>
+
+<span id="alert"></span>
+  
+	<div class="container-fluid">
+   <div class="row-fluid">
+      <div class = "span12"></div>
+      <div class="span12">
+        <div id="myCarousel" class="carousel slide"  data-interval="3000">
+          <!-- Carousel items -->
+          <div class="carousel-inner">
+            <div class="item active">
+              <a href="#"><img src="gallery/1.jpg"></a>
+            </div>
+            <div class="item">
+              <a href="#"><img src="gallery/2.jpg"></a>
+            </div>
+            <div class="item">
+              <a href="#"><img src="gallery/3.jpg"></a>
+            </div>
+            <div class="item">
+              <a href="#"><img src="gallery/4.jpg"></a>
+            </div>
+            <div class="item">
+              <a href="#"><img src="gallery/5.jpg"></a>
+            </div>
+            <div class="item">
+              <a href="#"><img src="gallery/6.jpg"></a>
+            </div>
+            <div class="item">
+              <a href="#"><img src="gallery/7.jpg"></a>
+            </div>
+            <div class="item">
+              <a href="#"><img src="gallery/8.jpg"></a>
+            </div>
+          </div>
+          <!-- Carousel nav -->
+          <a class="carousel-control left" href="#myCarousel" data-slide="prev">&lsaquo;</a>
+          <a class="carousel-control right" href="#myCarousel" data-slide="next">&rsaquo;</a>
+        </div>
+      </div>
+    </div>
+    <div class = "row-fluid" id="content">
+
+    </div>
+  </div> 
+</body>
+</HTML>
